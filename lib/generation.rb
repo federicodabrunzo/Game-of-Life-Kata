@@ -1,24 +1,21 @@
 # frozen_string_literal: true
 
 require 'logger'
+require_relative '../config/settings'
+require_relative 'utils'
 
 logger = Logger.new($stdout)
 logger.level = Logger::INFO
 
 class Generation
-  LIVE_SYMBOL = '*'
-  DEAD_SYMBOL = '.'
-
-  def initialize
-    @number = 1
-    @n_rows = 4
-    @n_cols = 8
-    @state = [
-      [DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL],
-      [DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, LIVE_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL],
-      [DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, LIVE_SYMBOL, LIVE_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL],
-      [DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL, DEAD_SYMBOL]
-    ]
+  def initialize(number = GENERATION_NUMBER, n_rows = N_ROWS, n_cols = N_COLS,
+                 live_symbol = LIVE_SYMBOL, dead_symbol = DEAD_SYMBOL, initial_state = nil)
+    @number = number
+    @n_rows = n_rows
+    @n_cols = n_cols
+    @live_symbol = live_symbol
+    @dead_symbol = dead_symbol
+    @state = initial_state.nil? ? generate_random_matrix(n_rows, n_cols, [live_symbol, dead_symbol]) : initial_state
   end
 
   def get_neighbours_values(cell_row, cell_column)
@@ -39,7 +36,7 @@ class Generation
 
         if row_index.negative? || row_index == @n_rows || column_index.negative? || column_index == @n_cols
           # the grid is finite and no life can exist off the edges
-          values.append(DEAD_SYMBOL)
+          values.append(@dead_symbol)
         else
           values.append(@state[row_index][column_index])
         end
@@ -55,33 +52,45 @@ class Generation
   def calculate_next_cell_state(cell_row, cell_column)
     neighbours_values = get_neighbours_values(cell_row, cell_column)
     alive_cells = neighbours_values.reduce(0) do |alive_cells, cell_state|
-      cell_state == LIVE_SYMBOL ? alive_cells + 1 : alive_cells
+      cell_state == @live_symbol ? alive_cells + 1 : alive_cells
     end
 
     cell_state = @state[cell_row][cell_column]
     new_state = nil
 
-    new_state = if cell_state == DEAD_SYMBOL
+    new_state = if cell_state == @dead_symbol
                   # Any dead cell with exactly three live neighbours becomes a live cell
                   if alive_cells == 3
-                    LIVE_SYMBOL
+                    @live_symbol
                   else
-                    DEAD_SYMBOL
+                    @dead_symbol
                   end
                 elsif alive_cells < 2 # live cell
                   # Any live cell with fewer than two live neighbours dies
-                  DEAD_SYMBOL
+                  @dead_symbol
                   # Any live cell with more than three live neighbours dies
                 elsif alive_cells > 3
-                  DEAD_SYMBOL
+                  @dead_symbol
                 else
                   # Any live cell with two or three live neighbours lives on to the next generation
-                  LIVE_SYMBOL
+                  @live_symbol
                 end
 
     raise 'Bad calculation of next cell state' if new_state.nil?
 
     new_state
+  end
+
+  def get_alive_cells_number
+    value = 0
+
+    @state.each do |row|
+      row.each do |column|
+        value += 1 if column == @live_symbol
+      end
+    end
+
+    value
   end
 
   def calculate_next_generation
@@ -104,11 +113,4 @@ class Generation
     end
     s
   end
-end
-
-if __FILE__ == $PROGRAM_NAME
-  generation = Generation.new
-  puts generation
-  generation.calculate_next_generation
-  puts generation
 end
