@@ -4,9 +4,6 @@ require 'logger'
 require_relative '../config/settings'
 require_relative 'utils'
 
-logger = Logger.new($stdout)
-logger.level = Logger::INFO
-
 class Generation
   HEADER_LINES = 2
 
@@ -16,6 +13,7 @@ class Generation
 
     raise "Can't specify initial_state_path if initial_state is specified" if initial_state && initial_state_path
 
+    @logger = LOGGER
     @live_symbol = live_symbol
     @dead_symbol = dead_symbol
 
@@ -29,6 +27,8 @@ class Generation
     end
 
     validate_grid
+
+    @logger.debug("Generation initialized!\n#{to_s}")
   end
 
   def initialize_from_file(path)
@@ -37,7 +37,7 @@ class Generation
     n_cols = nil
     initial_state = nil
 
-    File.readlines("#{Bundler.root}/#{path}").each_with_index do |line, index|
+    File.readlines("#{PROJECT_ROOT}/#{path}").each_with_index do |line, index|
       line = line.strip
 
       if index.zero?
@@ -88,7 +88,7 @@ class Generation
   end
 
   def get_neighbours_values(cell_row, cell_column)
-    # puts "Called get_neighbours_values on cell[#{cell_row}][#{cell_column}]"
+    @logger.debug { "Retrieving neighbours values of cell[#{cell_row}][#{cell_column}]" }
 
     values = []
     rows_to_visit = [cell_row - 1, cell_row, cell_row + 1]
@@ -101,7 +101,7 @@ class Generation
           next
         end
 
-        # puts "Retrieving value of neighbour [#{row_index}][#{column_index}]"
+        @logger.debug { "Retrieving value of neighbour [#{row_index}][#{column_index}]" }
 
         if row_index.negative? || row_index == @n_rows || column_index.negative? || column_index == @n_cols
           # the grid is finite and no life can exist off the edges
@@ -110,21 +110,22 @@ class Generation
           values.append(@state[row_index][column_index])
         end
 
-        # puts values
+        @logger.debug { "Values: #{values}" }
       end
     end
 
-    # puts "Length: #{values.length}"
     raise 'Bad calculation of neighbours values' unless values.length == 8
 
     values
   end
 
   def calculate_next_cell_state(cell_row, cell_column)
+    @logger.debug("Calculating next cell state for cell [#{cell_row}][#{cell_column}]")
     neighbours_values = get_neighbours_values(cell_row, cell_column)
     alive_cells = neighbours_values.reduce(0) do |alive_cells, cell_state|
       cell_state == @live_symbol ? alive_cells + 1 : alive_cells
     end
+    @logger.debug("Number of alive neighbours: #{alive_cells}")
 
     cell_state = @state[cell_row][cell_column]
     new_state = nil
@@ -144,7 +145,8 @@ class Generation
                   # Any live cell with more than three live neighbours dies
                   @dead_symbol
                 end
-
+    
+    @logger.debug("New cell state '#{new_state}'")
     raise 'Bad calculation of next cell state' if new_state.nil?
 
     new_state
@@ -163,6 +165,8 @@ class Generation
   end
 
   def calculate_next_generation
+    @logger.debug("Calculating generation #{@number+1}")
+    
     new_state = generate_empty_matrix(@n_rows, @n_cols)
 
     (0...@n_rows).each do |row_index|
@@ -173,6 +177,8 @@ class Generation
 
     @number += 1
     @state = new_state
+
+    @logger.debug(to_s)
   end
 
   def to_s
