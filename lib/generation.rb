@@ -27,6 +27,8 @@ class Generation
       @n_cols = n_cols
       @state = initial_state.nil? ? generate_random_matrix(n_rows, n_cols, [live_symbol, dead_symbol]) : initial_state
     end
+
+    validate_grid
   end
 
   def initialize_from_file(path)
@@ -64,6 +66,25 @@ class Generation
     @n_rows = n_rows
     @n_cols = n_cols
     @state = initial_state
+  end
+
+  def validate_grid()
+    if @state.length != @n_rows
+      err_msg = "Invalid grid. Grid number of rows (#{@state.length}) don't match the expected of #{@n_rows}"
+      raise err_msg
+    end
+
+    @state.each_with_index do |row, row_index|
+      if row.length != @n_cols
+        err_msg = "Invalid grid. (Row #{row_index}) Number of columns (#{row.length}) don't match the expected of #{@n_cols}"
+        raise err_msg
+      end
+      row.each do |cell|
+        if cell != @live_symbol && cell != @dead_symbol
+          raise "Invalid grid. Found unexpected symbol '#{cell}' in row #{row_index} (#{row})"
+        end
+      end
+    end
   end
 
   def get_neighbours_values(cell_row, cell_column)
