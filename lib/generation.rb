@@ -68,7 +68,7 @@ class Generation
     @state = initial_state
   end
 
-  def validate_grid()
+  def validate_grid
     if @state.length != @n_rows
       err_msg = "Invalid grid. Grid number of rows (#{@state.length}) don't match the expected of #{@n_rows}"
       raise err_msg
@@ -136,15 +136,13 @@ class Generation
                   else
                     @dead_symbol
                   end
-                elsif alive_cells < 2 # live cell
-                  # Any live cell with fewer than two live neighbours dies
-                  @dead_symbol
-                  # Any live cell with more than three live neighbours dies
-                elsif alive_cells > 3
-                  @dead_symbol
-                else
+                elsif [2, 3].include?(alive_cells)
                   # Any live cell with two or three live neighbours lives on to the next generation
                   @live_symbol
+                else
+                  # Any live cell with fewer than two live neighbours dies
+                  # Any live cell with more than three live neighbours dies
+                  @dead_symbol
                 end
 
     raise 'Bad calculation of next cell state' if new_state.nil?
